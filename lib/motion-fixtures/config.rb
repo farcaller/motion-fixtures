@@ -13,20 +13,26 @@ module Motion; module Project
     end
     
     attr_accessor :fixtures
+
+    def fixtures
+      unless @fixtures
+        @fixtures = Dir.glob('./spec/fixtures/*').map { |fn| [fn, :NSDocumentDirectory] }
+      end
+      @fixtures
+    end
     
     def fixtures_loader_config
       loader_file = File.join(build_dir, 'fixtures_loader.rb')
       
       f = open(loader_file, 'wb')
 
-      fixtures.each do |fn, dest|
-        filename = File.basename(fn)
+      abs_fixtures = fixtures.map { |fn, dest| [File.absolute_path(fn), dest] }
+      abs_fixtures.each do |fn, dest|
+        base_fn = File.basename(fn)
         f.write(
-          "NSFileManager.defaultManager.createDirectoryAtPath(NSHomeDirectory+\"/#{dest}\"), " +
-          "withIntermediateDirectories:true, attributes:nil, error:nil)\n" +
-
-          "NSFileManager.defaultManager.copyItemAtPath(\"#{fn}\"), " +
-          "toPath:NSHomeDirectory+\"/#{dest}/#{filename}\", error:nil"
+          "NSFileManager.defaultManager.copyItemAtURL(NSURL.fileURLWithPath(\"#{fn}\"),
+            toURL:NSFileManager.defaultManager.URLForDirectory(#{dest.to_s}, inDomain:NSUserDomainMask, appropriateForURL:nil, create:true, error:nil).
+            URLByAppendingPathComponent(\"#{base_fn}\"), error:nil)\n"
         )
 
       end
